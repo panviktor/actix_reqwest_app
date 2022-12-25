@@ -1,9 +1,13 @@
+use std::path::Display;
 use reqwest;
 use reqwest::header::{ ACCEPT, CONTENT_TYPE,AUTHORIZATION };
 use serde::{Deserialize, Serialize};
 
 use actix_web::{get, web, Responder, Result};
 use actix_web::HttpResponse;
+
+use std::fmt;
+
 
 #[get("/spotify/{search_query}")]
 async fn index(search_query: web::Path<String>) -> Result<impl Responder> {
@@ -32,7 +36,7 @@ async fn check_album(search_query: &str) -> String {
 
     let response = client
         .get(url)
-        .header(AUTHORIZATION, "Bearer BQC116drDFsNU3zHz9Hs7csqMbJqjTQ_2dRg_vkHsNPQ1hzex6kV9tTB9LstU9bkDuWjWsGhVVTLQL1SFQ9jeCGP6HPeVl4FTCB6iq_fEcWpnON4jvdWKAQcOt0wMSSqKwVzTcIr3738u7XGi77ct2Y2aKHALrMSMVCIcwCmW1v4iyzlObDWjByN2p0nWdal0FY")
+        .header(AUTHORIZATION, "Bearer BQCPmBBAVhZaupS2Cie9-h8AbjanakU98D4jYPYunaN1YX8gpsv541B8ZheCa51Ho_o_Hju5Hm5yRMUHIQDDq2OwZhfruZ0qJmbLJgswlTAK5pBfreH4X2JL_4okT2A_0TVNrbkLhYkR6rdCuJo1r8U4g7P1eGOYcdKlULNPUfQa5cJW4Dg0j-L2jvsjTyoAyRo")
         .header(CONTENT_TYPE, "application/json")
         .header(ACCEPT, "application/json")
         .send()
@@ -43,8 +47,7 @@ async fn check_album(search_query: &str) -> String {
         reqwest::StatusCode::OK => {
             // on success, parse our JSON to an APIResponse
             match response.json::<APIResponse>().await {
-                // Ok(parsed) => print_tracks(parsed.tracks.items.iter().collect()),
-                Ok(parsed) => serde_json::to_string(&parsed).unwrap(),
+                Ok(parsed) => print_tracks(parsed.tracks.items.iter().collect()),
                 Err(_) => ("Hm, the response didn't match the shape we expected.").to_string(),
             }
         }
@@ -58,22 +61,13 @@ async fn check_album(search_query: &str) -> String {
     }
 }
 
-fn print_tracks(tracks: Vec<&Track>) {
+fn print_tracks(tracks: Vec<&Track>) -> String {
+    let mut string = String::new();
     for track in tracks {
-        println!("🔥 {}", track.name);
-        println!("💿 {}", track.album.name);
-        println!(
-            "🕺 {}",
-            track
-                .album
-                .artists
-                .iter()
-                .map(|artist| artist.name.to_string())
-                .collect::<String>()
-        );
-        println!("🌎 {}", track.external_urls.spotify);
-        println!("---------")
+        string.push_str(&track.to_string());
+        string.push_str(&"--------- \n".to_string());
     }
+    string.to_string()
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -106,4 +100,22 @@ struct Items<T> {
 #[derive(Serialize, Deserialize, Debug)]
 struct APIResponse {
     tracks: Items<Track>,
+}
+
+impl fmt::Display for Track {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(Track Name: {}, \n Album: {} \n)", self.name, self.album)
+    }
+}
+
+impl fmt::Display for Album {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({} : {:?}\n)", self.name, self.artists)
+    }
+}
+
+impl fmt::Display for Artist {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, " {} and url: {}\n)", self.name, self.external_urls.spotify)
+    }
 }
